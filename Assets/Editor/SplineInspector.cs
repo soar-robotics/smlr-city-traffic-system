@@ -6,8 +6,11 @@ using UnityEditor;
 [CustomEditor(typeof(Splines))]
 public class SplineInspector : Editor
 {
-    private const int iteration = 5;
     private const float directionScale = 0.5f;
+    private const int StepCurve = 10;
+    private const float handleSize = 0.04f;
+    private const float pickSize = 0.06f;
+    private int selectedIndex = -1;
 
     private Splines spline;
     private Transform handleTransform;
@@ -20,50 +23,82 @@ public class SplineInspector : Editor
         handleRotation = Tools.pivotRotation == PivotRotation.Local ? handleTransform.rotation : Quaternion.identity;
 
         Vector3 p0 = ShowPoint(0);
-        Vector3 p1 = ShowPoint(1);
-        Vector3 p2 = ShowPoint(2);
-        Vector3 p3 = ShowPoint(3);
+        for(int i = 1; i < spline.ControlPointCount(); i += 3)
+        {
+            Vector3 p1 = ShowPoint(i);
+            Vector3 p2 = ShowPoint(i + 1);
+            Vector3 p3 = ShowPoint(i + 2);
 
-        Handles.color = Color.gray;
-        Handles.DrawLine(p0, p1);
-        Handles.DrawLine(p2, p3);
+            Handles.color = Color.gray;
+            Handles.DrawLine(p0, p1);
+            Handles.DrawLine(p2, p3);
+
+            Handles.DrawBezier(p0, p3, p1, p2, Color.red, null, 2f);
+            p0 = p3;
+        }
+     
         ShowDirections();
-        Handles.DrawBezier(p0, p3, p1, p2, Color.red, null, 2f);
 
     }
-    private void ShowDirections()
+    private void ShowDirections()                                                           //draws and shows tangent lines which are normal to interpolated points.
     {
+        int steps;
         Handles.color = Color.green;
         Vector3 point = spline.GetPoints(0f);
         Handles.DrawLine(point, point + spline.getDirectionNormalized(0f) * directionScale);
-        for (int i = 1; i <= iteration; i++)
+        steps = StepCurve * spline.CurveCount();
+        for (int i = 1; i <= steps; i++)
         {
-            point = spline.GetPoints(i / (float)iteration);
-            Handles.DrawLine(point, point + spline.getDirectionNormalized(i / (float)iteration) * directionScale);
+            point = spline.GetPoints(i / (float)steps);
+            Handles.DrawLine(point, point + spline.getDirectionNormalized(i / (float)steps) * directionScale);
         }
     }
-    private Vector3 ShowPoint(int index)
+    private Vector3 ShowPoint(int index)                                            //this function shows the guide points with single dot handle which are connected with a single gray line between pairs.
     {
-        Vector3 point = handleTransform.TransformPoint(spline.points[index]);
-        EditorGUI.BeginChangeCheck();
-        point = Handles.DoPositionHandle(point, handleRotation);
-        if (EditorGUI.EndChangeCheck())
+        Vector3 point = handleTransform.TransformPoint(spline.GetControlPoint(index));
+        Handles.color = Color.white;
+        if (Handles.Button(point, handleRotation, handleSize, pickSize, Handles.DotHandleCap))
         {
-            Undo.RecordObject(spline, "Move Point");
-            EditorUtility.SetDirty(spline);
-            spline.points[index] = handleTransform.InverseTransformPoint(point);
+            selectedIndex = index;
+            Repaint();
+        }
+        if (selectedIndex == index)
+        {
+            EditorGUI.BeginChangeCheck();
+            point = Handles.DoPositionHandle(point, handleRotation);
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(spline, "Move Point");
+                EditorUtility.SetDirty(spline);
+                spline.SetControlPoint(index, handleTransform.InverseTransformPoint(point));
+            }
         }
         return point;
     }
-    public override void OnInspectorGUI()
-    {
-        DrawDefaultInspector();
+    public override void OnInspectorGUI()                                       //in inheritance style, it overrides the GUI method.
+    { 
         spline = target as Splines;
+        if (selectedIndex >= 0 && selectedIndex < spline.ControlPointCount())
+        {
+            DrawSelectedPointInspector();
+        }
         if (GUILayout.Button("Add Curve"))
         {
             Undo.RecordObject(spline, "Add Curve");
             spline.AddCurve();
             EditorUtility.SetDirty(spline);
+        }
+    }
+    private void DrawSelectedPointInspector()
+    {
+        GUILayout.Label("Selected Point");
+        EditorGUI.BeginChangeCheck();
+        Vector3 point = EditorGUILayout.Vector3Field("Position", spline.GetControlPoint(selectedIndex));
+        if (EditorGUI.EndChangeCheck())
+        {
+            Undo.RecordObject(spline, "Move Point");
+            EditorUtility.SetDirty(spline);
+            spline.SetControlPoint(selectedIndex, point);
         }
     }
 }

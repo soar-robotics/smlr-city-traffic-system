@@ -6,7 +6,7 @@ public class Curve : MonoBehaviour
 {
     public Vector3[] points;
 
-    public void Set()
+    public void Reset()
     {
         points = new Vector3[] {            //default declaretion of curve vectors.
             new Vector3(1f, 0f, 0f),
@@ -36,7 +36,7 @@ public class Curve : MonoBehaviour
                 t * t * t * p3;
         }
 
-        public static Vector3 FirstDerivative(Vector3 point0, Vector3 point1, Vector3 point2, Vector3 point3, float t)
+        public static Vector3 FirstDerivative(Vector3 point0, Vector3 point1, Vector3 point2, Vector3 point3, float t)              //first derivative of f(p1,p2,p3)
         {
             t = Mathf.Clamp01(t);
             float oneMinusT = 1f - t;
@@ -48,22 +48,19 @@ public class Curve : MonoBehaviour
        
     }
 
-    public Vector3 GetDirection(float t)
+    public Vector3 GetDirection(float t)                        //identify the look direction of the tangent line.
     {
         return transform.TransformPoint(Bezier.FirstDerivative(points[0], points[1], points[2], points[3], t)) - transform.position;
     }
 
-    public Vector3 getDirectionNormalized(float t)
+    public Vector3 getDirectionNormalized(float t)              //magnitute of tangent lines is 1.
     {
         return GetDirection(t).normalized;
     }
     //creation
     void Start()
     {
-        points[0].x = 1f;
-        points[1].x = 2f;
-        points[2].x = 3f;
-        points[3].x = 4f;
+        
     }
 
   

@@ -35,17 +35,46 @@ public class Splines : MonoBehaviour
     //standart methods
     public Vector3 GetPoints(float index)
     {
-        return transform.TransformPoint(Bezier.GetPoint(points[0], points[1], points[2], points[3], index));
+        int i;
+        if (index >= 1f)
+        {
+            index = 1f;
+            i = points.Length - 4;
+        }
+        else
+        {
+            index = Mathf.Clamp01(index) * CurveCount();
+            i = (int)index;
+            index -= i;
+            i *= 3;
+        }
+        return transform.TransformPoint(Bezier.GetPoint(points[i], points[i + 1], points[i + 2], points[i + 3], index));
     }
 
     public Vector3 GetDirection(float t)
     {
-        return transform.TransformPoint(Bezier.FirstDerivative(points[0], points[1], points[2], points[3], t)) - transform.position;
+        int j;
+        if(t >= 1f)
+        {
+            t = 1f;
+            j = points.Length - 4;
+        }
+        else
+        {
+            t = Mathf.Clamp01(t) * CurveCount();
+            j = (int)t;
+            t -= j;
+            j *= 3;
+        }
+        return transform.TransformPoint(Bezier.FirstDerivative(points[j], points[j + 1], points[j + 2], points[j + 3], t)) - transform.position;
     }
     public Vector3 getDirectionNormalized(float t)
     {
         return GetDirection(t).normalized;
     }
+    /*[SerializeField]
+    private BezierControlPointMode[] modes;*/
+
     public void AddCurve()
     {
         Vector3 newPoint = points[points.Length - 1];           //we create 3 new nodes that same as the last node of the curve.
@@ -56,12 +85,50 @@ public class Splines : MonoBehaviour
         points[points.Length - 2] = newPoint;
         newPoint.x += 1f;
         points[points.Length - 1] = newPoint;
+        /*Array.Resize(ref modes, modes.Length + 1);
+        modes[modes.Length - 1] = modes[modes.Length - 2];*/
     }
+
+    /*public BezierControlPointMode GetControlPointMode(int index)
+    {
+        return modes[(index + 1) / 3];
+    }
+
+    public void SetControlPointMode(int index, BezierControlPointMode mode)
+    {
+        modes[(index + 1) / 3] = mode;
+    }*/
+
+    public int CurveCount()
+    {
+
+        return (points.Length - 1) / 3;
+
+    }
+    public int ControlPointCount()
+    {
+        return points.Length;
+    }
+    public Vector3 GetControlPoint(int index)
+    {
+        return points[index];
+    }
+
+    public void SetControlPoint(int index, Vector3 point)
+    {
+        points[index] = point;
+    }
+
     //standart declaretion
+    [SerializeField]
     public Vector3[] points;
-    public void Set()
+    public void Reset()
     {
         points = new Vector3[] {new Vector3(1f,0,0), new Vector3(2f,0,0), new Vector3(3f,0,0), new Vector3(4f,0,0)};
+       /* modes = new BezierControlPointMode[] {
+            BezierControlPointMode.Free,
+            BezierControlPointMode.Free
+        };*/
     }
     //creation
     private void Start()
@@ -71,4 +138,5 @@ public class Splines : MonoBehaviour
         points[2].x = 3f;
         points[3].x = 4f;
     }
+    
 }

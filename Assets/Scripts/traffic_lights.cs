@@ -10,7 +10,7 @@ public class traffic_lights : MonoBehaviour
     public Material green;
     public Material yellow;
     public Material red;
-    private bool Switch = true;
+    public bool Switch = true;
 
     // Start is called before the first frame update
     void Start()
@@ -50,4 +50,5 @@ public class traffic_lights : MonoBehaviour
             }
         }
     }
+    
 }
