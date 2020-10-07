@@ -16,14 +16,20 @@ public class SplineInspector : Editor
     private Transform handleTransform;
     private Quaternion handleRotation;
 
+    private static Color[] modeColors = {               //it represents the color types of the guide points on the curve. Green for free, yellow for aligned, gray for mirrored.
+        Color.white,
+        Color.yellow,
+        Color.cyan
+    };
+
     private void OnSceneGUI()
     {
         spline = target as Splines;
         handleTransform = spline.transform;
-        handleRotation = Tools.pivotRotation == PivotRotation.Local ? handleTransform.rotation : Quaternion.identity;
+        handleRotation = Tools.pivotRotation == PivotRotation.Local ? handleTransform.rotation : Quaternion.identity;                   //locks all points pivot to global scale.
 
         Vector3 p0 = ShowPoint(0);
-        for(int i = 1; i < spline.ControlPointCount(); i += 3)
+        for(int i = 1; i < spline.ControlPointCount(); i += 3)                      //this for loop draws guide lines between node pairs.
         {
             Vector3 p1 = ShowPoint(i);
             Vector3 p2 = ShowPoint(i + 1);
@@ -33,7 +39,7 @@ public class SplineInspector : Editor
             Handles.DrawLine(p0, p1);
             Handles.DrawLine(p2, p3);
 
-            Handles.DrawBezier(p0, p3, p1, p2, Color.red, null, 2f);
+            Handles.DrawBezier(p0, p3, p1, p2, Color.red, null, 2f);                //this line draws the curve with red color according to guide nodes.
             p0 = p3;
         }
      
@@ -56,8 +62,14 @@ public class SplineInspector : Editor
     private Vector3 ShowPoint(int index)                                            //this function shows the guide points with single dot handle which are connected with a single gray line between pairs.
     {
         Vector3 point = handleTransform.TransformPoint(spline.GetControlPoint(index));
-        Handles.color = Color.white;
-        if (Handles.Button(point, handleRotation, handleSize, pickSize, Handles.DotHandleCap))
+        float capSize = HandleUtility.GetHandleSize(point);
+        if (index == 0)             //this case comes for the starting point of the loops.
+        {
+            Handles.color = Color.magenta;
+            capSize *= 2f;
+        }
+        Handles.color = modeColors[(int)spline.GetControlPointMode(index)];
+        if (Handles.Button(point, handleRotation, capSize * handleSize, capSize * pickSize, Handles.DotHandleCap))          //replaces nodes with clickable handleSize x pickSize dimensional Dot buttons.
         {
             selectedIndex = index;
             Repaint();
@@ -68,7 +80,7 @@ public class SplineInspector : Editor
             point = Handles.DoPositionHandle(point, handleRotation);
             if (EditorGUI.EndChangeCheck())
             {
-                Undo.RecordObject(spline, "Move Point");
+                Undo.RecordObject(spline, "Move Point");           //Save and ctrl + z options.
                 EditorUtility.SetDirty(spline);
                 spline.SetControlPoint(index, handleTransform.InverseTransformPoint(point));
             }
@@ -78,11 +90,19 @@ public class SplineInspector : Editor
     public override void OnInspectorGUI()                                       //in inheritance style, it overrides the GUI method.
     { 
         spline = target as Splines;
-        if (selectedIndex >= 0 && selectedIndex < spline.ControlPointCount())
+        EditorGUI.BeginChangeCheck();                                           //this block checks the loop property
+        bool loop = EditorGUILayout.Toggle("Loop", spline.Loop);
+        if (EditorGUI.EndChangeCheck())
+        {
+            Undo.RecordObject(spline, "Toggle Loop");
+            EditorUtility.SetDirty(spline);
+            spline.Loop = loop;
+        }
+        if (selectedIndex >= 0 && selectedIndex < spline.ControlPointCount())               //this block for current points and add curves.
         {
             DrawSelectedPointInspector();
         }
-        if (GUILayout.Button("Add Curve"))
+        if (GUILayout.Button("Add Curve"))              //when you click to Add Curve button, it calls the target method with save and undo actions.
         {
             Undo.RecordObject(spline, "Add Curve");
             spline.AddCurve();
@@ -99,6 +119,15 @@ public class SplineInspector : Editor
             Undo.RecordObject(spline, "Move Point");
             EditorUtility.SetDirty(spline);
             spline.SetControlPoint(selectedIndex, point);
+        }
+        EditorGUI.BeginChangeCheck();                                                     
+        BezierControlPointMode mode = (BezierControlPointMode)
+            EditorGUILayout.EnumPopup("Mode", spline.GetControlPointMode(selectedIndex));
+        if (EditorGUI.EndChangeCheck())
+        {
+            Undo.RecordObject(spline, "Change Point Mode");
+            spline.SetControlPointMode(selectedIndex, mode);
+            EditorUtility.SetDirty(spline);
         }
     }
 }
